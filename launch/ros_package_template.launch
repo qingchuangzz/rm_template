@@ -1,8 +1,18 @@
 <launch>
+  <include file="$(find rm_description)/launch/hero.launch">
+    <arg name="load_chassis" value="true"/>
+    <arg name="roller_type" value="realistic"/>
+    <arg name="paused" value="true"/>
+  </include>
+  <!-- 加载控制器配置文件 -->
+  <rosparam file="$(find hero_chassis_controller)/config/default.yaml" command="load"/>
+  
 
-  <!-- Launch ROS Package Template Node -->
-  <node pkg="ros_package_template" type="ros_package_template" name="ros_package_template" output="screen">
-    <rosparam command="load" file="$(dirname)/../config/default.yaml"/>
-  </node>
-
+  <!-- 启动控制器管理器 -->  
+ <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
+        output="screen" args="hero_chassis_controller
+                              joint_state_controller
+                              "/>
+  <!-- 其他节点和参数 -->
+ <node name="hero_chassis_controller_node" pkg="hero_chassis_controller" type="hero_chassis_controller_node" output="screen"/>
 </launch>

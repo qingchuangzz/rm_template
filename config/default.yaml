@@ -1,1 +1,65 @@
-subscriber_topic: /temperature
+hero_chassis_controller:
+  type: hero_chassis_controller/HeroChassisController
+  publish_rate: 50
+joint_state_controller:
+  type: joint_state_controller/JointStateController
+  publish_rate: 50
+  
+pid_gains:
+  left_front_wheel_joint:
+    p: 1.0
+    i: 0.0
+    d: 0.0
+    i_max: 1.0
+    i_min: -1.0
+  right_front_wheel_joint:
+    p: 1.0
+    i: 0.0
+    d: 0.0
+    i_max: 1.0
+    i_min: -1.0
+  left_back_wheel_joint:
+    p: 1.0
+    i: 0.0
+    d: 0.0
+    i_max: 1.0
+    i_min: -1.0
+  right_back_wheel_joint:
+    p: 1.0
+    i: 0.0
+    d: 0.0
+    i_max: 1.0
+    i_min: -1.0
+
+# 机器人物理参数
+robot:
+  mass: 10.34269
+  inertia:
+    ixx: 0.01952
+    ixy: -0.00001504
+    ixz: 0.00005871
+    iyy: 0.03011
+    iyz: -0.00001077
+    izz: 0.04074
+  origin:
+    x: -0.003691
+    y: -0.001885
+    z: 0.024404
+
+# 轮子布局参数
+wheel:
+  track: 0.4  # 轮距
+  base: 0.4   # 轴距
+  offset_z: -0.068374  # 轮子Z轴偏移
+
+# 控制器启动时的初始状态
+initial_state:
+  position:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+  orientation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 1.0

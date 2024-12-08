@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>ros_package_template</name>
+  <name>hero_chassis_controller</name>
   <version>0.1.0</version>
-  <description>A template for ROS packages.</description>
+  <description>A controller package for the hero chassis.</description>
   <maintainer email="liaoqiayuan@gmail.com">Qiayuan Liao</maintainer>
   <license>BSD</license>
   <author email="liaoqiayuan@gmail.com">Qiayuan Liao</author>
@@ -15,6 +15,21 @@
   <depend>eigen</depend>
   <depend>roscpp</depend>
   <depend>sensor_msgs</depend>
-
-  <build_depend>roslint</build_depend>
+  <depend>std_msgs</depend>
+  <depend>control_toolbox</depend>
+  <depend>tf</depend>
+  <depend>hardware_interface</depend>
+  <depend>controller_interface</depend>
+  <depend>controller_manager</depend>
+  <depend>realtime_tools</depend>
+  <depend>nav_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>pluginlib</depend>
+  <test_depend>rostest</test_depend>
+  <depend>rm_description</depend>
+  <depend>forward_command_controller</depend>
+  
+    <export>
+  <controller_interface plugin="${prefix}/hero_chassis_controller_plugin.xml"/>
+  </export>
 </package>

@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<library path="lib/libhero_chassis_controller_core">
+  <class name="hero_chassis_controller/HeroChassisController"
+         type="hero_chassis_controller::HeroChassisController"
+         base_class_type="controller_interface::ControllerBase">
+    <description>Hero Chassis Controller Plugin</description>
+  </class>
+</library>
