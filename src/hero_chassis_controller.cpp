@@ -9,19 +9,34 @@ PLUGINLIB_EXPORT_CLASS(hero_chassis_controller::HeroChassisController, controlle
 namespace hero_chassis_controller {
 
 bool HeroChassisController::init(hardware_interface::EffortJointInterface *effort_joint_interface,
-                                 ros::NodeHandle &root_nh, ros::NodeHandle &controller_nh) {
+                                 ros::NodeHandle &root_nh, ros::NodeHandle &controller_nh) {       
+                                             
+    if (!effort_joint_interface) {  
+ 
+    ROS_ERROR("Effort joint interface is null.");
+    return false;
+}
+     effort_joint_interface_ = effort_joint_interface;
     // Initialize joint handles
     front_left_joint_ = effort_joint_interface->getHandle("left_front_wheel_joint");
     front_right_joint_ = effort_joint_interface->getHandle("right_front_wheel_joint");
     back_left_joint_ = effort_joint_interface->getHandle("left_back_wheel_joint");
     back_right_joint_ = effort_joint_interface->getHandle("right_back_wheel_joint");
 
+    ROS_INFO("Joint handles initialized: %s, %s, %s, %s", 
+             front_left_joint_.getName().c_str(), front_right_joint_.getName().c_str(),
+             back_left_joint_.getName().c_str(), back_right_joint_.getName().c_str());
+    
+    // Load wheel track and base from parameter server
+    controller_nh.param("/wheel/track", wheel_track_, 0.4);
+    controller_nh.param("/wheel/base", wheel_base_, 0.4);    
+    ROS_INFO("wheel_track: %f, wheel_base: %f", wheel_track_, wheel_base_ ); 
     // Load PID gains from parameter server
     if (!updatePIDGains(controller_nh)) {
         ROS_ERROR("Failed to load PID gains from parameter server.");
         return false;
     }
-
+   
     // Initialize odometry publisher
     odom_pub_ = root_nh.advertise<nav_msgs::Odometry>("/odom", 50);
     if (!odom_pub_) {
@@ -30,24 +45,26 @@ bool HeroChassisController::init(hardware_interface::EffortJointInterface *effor
     }
      tf_broadcaster_Initialized = true;
      
-     
+     cmd_vel_sub_ = root_nh.subscribe("/cmd_vel" ,10, &HeroChassisController::cmdVelCallback, this);
     
     return true;
 }
 
 void HeroChassisController::update(const ros::Time &time, const ros::Duration &period) {
-    // Calculate desired wheel speeds based on cmd_vel
+    ros::spinOnce();
+    
     double v_x = cmd_vel_.linear.x;
     double v_y = cmd_vel_.linear.y;
     double v_yaw = cmd_vel_.angular.z;
-
+    
+    
     double wheel_speeds[4];
     calculateWheelSpeeds(v_x, v_y, v_yaw, wheel_speeds);
-
-    // Apply PID control to each wheel
-    for (size_t i = 0; i < 4; ++i) { // Change i to size_t
+    
+    for (size_t i = 0; i < 4; ++i) {
         double error = wheel_speeds[i] - current_wheel_speeds_[i];
         double command = pid_controllers_[i].computeCommand(error, period);
+        
         hardware_interface::JointHandle *joint_handles[] = {
             &front_left_joint_, &front_right_joint_, &back_left_joint_, &back_right_joint_
         };
@@ -56,15 +73,16 @@ void HeroChassisController::update(const ros::Time &time, const ros::Duration &p
             return;
         }
         joint_handles[i]->setCommand(command);
+        ROS_INFO("joint %ld, command %f", i , command); 																																																																				
     }
-
-    // Update odometry
+// 更新当前轮子速度
+    current_wheel_speeds_[0] = wheel_speeds[0];
+    current_wheel_speeds_[1] = wheel_speeds[1];
+    current_wheel_speeds_[2] = wheel_speeds[2];
+    current_wheel_speeds_[3] = wheel_speeds[3];
+    
     updateOdometry(v_x, v_y, v_yaw);
-
-    // Publish odometry
     publishOdometry();
-
-    // Publish tf
     publishTF();
 }
 
@@ -95,19 +113,36 @@ bool HeroChassisController::updatePIDGains(ros::NodeHandle &controller_nh) {
 
         // Set the gains for the corresponding PID controller
         pid_controllers_[a].setGains(p, i, d, i_max, i_min);
+        
+        // Print the PID gains using ROS_INFO
+        ROS_INFO_STREAM("PID gains for joint " << joint_names[a] << ": "
+                        << "p: " << p << ", i: " << i << ", d: " << d 
+                        << ", i_max: " << i_max << ", i_min: " << i_min);
     }
     return true;
 }
 
 void HeroChassisController::calculateWheelSpeeds(double v_x, double v_y, double v_yaw, double (&wheel_speeds)[4]) {
-    // Implement the inverse kinematics for Mecanum wheels
-    wheel_speeds[0] = v_x + v_y + v_yaw; // front_left
-    wheel_speeds[1] = v_x - v_y - v_yaw; // front_right
-    wheel_speeds[2] = -v_x + v_y - v_yaw; // back_left
-    wheel_speeds[3] = -v_x - v_y + v_yaw; // back_right
+    // 确保轮距和轴距参数已加载，否则使用默认值
+    if (wheel_track_ <= 0 || wheel_base_ <= 0) {
+        ROS_ERROR("Wheel track or base is not set correctly. Using default values.");
+        wheel_track_ = 0.4;  // 默认轮距
+        wheel_base_ = 0.4;   // 默认轴距
+    }
+
+    // 计算每个轮子的期望速度
+    // 轮子半径
+    double wheel_radius = 0.07625;  // 从mecanum_wheel.urdf.xacro中获取
+
+    // 计算每个轮子的线速度
+    wheel_speeds[0] = (v_x - v_yaw * (wheel_track_ / 2) - v_y * (wheel_base_ / 2)) / wheel_radius; // front_left
+    wheel_speeds[1] = (v_x + v_yaw * (wheel_track_ / 2) + v_y * (wheel_base_ / 2)) / wheel_radius; // front_right
+    wheel_speeds[2] = (v_x - v_yaw * (wheel_track_ / 2) + v_y * (wheel_base_ / 2)) / wheel_radius; // back_left
+    wheel_speeds[3] = (v_x + v_yaw * (wheel_track_ / 2) - v_y * (wheel_base_ / 2)) / wheel_radius; // back_right
 }
 
 void HeroChassisController::cmdVelCallback(const geometry_msgs::Twist::ConstPtr& msg) {
+    ROS_INFO("Received velocity command: linear x: %f, y: %f, z: %f, angular x: %f, y: %f, z: %f", msg->linear.x, msg->linear.y, msg->linear.z, msg->angular.x, msg->angular.y, msg->angular.z);
     cmd_vel_ = *msg;
 }
 

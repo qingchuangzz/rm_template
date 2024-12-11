@@ -25,6 +25,9 @@ class HeroChassisController : public controller_interface::Controller<hardware_i
   hardware_interface::JointHandle front_left_joint_, front_right_joint_, back_left_joint_, back_right_joint_;
   
    void cmdVelCallback(const geometry_msgs::Twist::ConstPtr& msg);
+   geometry_msgs::Twist cmd_vel_;
+   double wheel_track_;  // 轮距
+  double wheel_base_;   // 轴距
  private:
   bool updatePIDGains(ros::NodeHandle &controller_nh);
   void calculateWheelSpeeds(double v_x, double v_y, double v_yaw, double (&wheel_speeds)[4]);
@@ -34,9 +37,8 @@ class HeroChassisController : public controller_interface::Controller<hardware_i
   bool tf_broadcaster_Initialized;
   tf::TransformBroadcaster tf_broadcaster_;
   control_toolbox::Pid pid_controllers_[4];
-  double wheel_track_ = 0.4;  // 轮距
-  double wheel_base_ = 0.4;   // 轴距
-  double wheel_offset_z_ = -0.068374;  // 轮子Z轴偏移
+  
+  double wheel_offset_z_;  // 轮子Z轴偏移
   double current_wheel_speeds_[4] = {0, 0, 0, 0};
   ros::Publisher odom_pub_;
   nav_msgs::Odometry odom_msg_;
@@ -44,8 +46,8 @@ class HeroChassisController : public controller_interface::Controller<hardware_i
   bool first_update_ = true;
   ros::Time last_update_time_;
   ros::Subscriber cmd_vel_sub_;
-  geometry_msgs::Twist cmd_vel_;  // 存储接收到的cmd_vel
-  
+    // 存储接收到的cmd_vel
+  hardware_interface::EffortJointInterface* effort_joint_interface_;
 };
 
 }  // namespace hero_chassis_controller
